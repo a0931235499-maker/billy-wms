@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>比利服飾｜條碼查詢系統</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0d0d; --surface:#161616; --card:#1e1e1e; --border:#2a2a2a;
+  --accent:#f0c040; --accent2:#e07030; --text:#f0ede8; --muted:#777;
+  --success:#40c070; --danger:#e04040;
+  --checked-bg:#152015; --checked-border:#40c070;
+  --ns-bg:#1e1010; --ns-border:#5a1a1a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans TC',sans-serif;min-height:100vh;display:flex;flex-direction:column;}
+
+/* ── HEADER ── */
+header{
+  background:var(--surface);border-bottom:2px solid var(--accent);
+  padding:12px 20px;display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:100;flex-shrink:0;
+}
+.logo{font-family:'Space Mono',monospace;font-size:18px;font-weight:700;color:var(--accent);letter-spacing:2px;}
+.logo span{color:var(--accent2);}
+.hdr-right{margin-left:auto;display:flex;gap:7px;align-items:center;}
+.hbtn{
+  border:1px solid var(--border);border-radius:6px;padding:7px 13px;
+  cursor:pointer;font-family:'Noto Sans TC',sans-serif;font-size:12px;
+  transition:all 0.18s;display:flex;align-items:center;gap:5px;
+  background:#1c1c1c;color:var(--muted);white-space:nowrap;
+}
+.hbtn:hover{border-color:var(--accent);color:var(--accent);}
+.hbtn.dl{background:#1c1800;border-color:#4a3a00;color:#c8a030;}
+.hbtn.dl:hover{background:#2a2200;border-color:var(--accent);color:var(--accent);}
+.hbtn svg{width:13px;height:13px;flex-shrink:0;}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;padding:16px 20px;gap:14px;max-width:860px;width:100%;margin:0 auto;}
+
+/* ── SCAN ZONE ── */
+.scan-zone{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;}
+.scan-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+.scan-row{display:flex;gap:10px;}
+.scan-input{
+  flex:1;background:#0a0a0a;border:2px solid var(--border);border-radius:8px;
+  padding:14px 18px;font-size:26px;font-family:'Space Mono',monospace;
+  color:var(--text);outline:none;transition:border-color 0.2s;letter-spacing:3px;
+}
+.scan-input:focus{border-color:var(--accent);}
+.scan-input::placeholder{color:#2a2a2a;font-size:14px;letter-spacing:1px;}
+.scan-btn{
+  background:var(--accent);color:#111;border:none;border-radius:8px;
+  padding:14px 22px;font-weight:700;font-size:15px;cursor:pointer;
+  font-family:'Noto Sans TC',sans-serif;transition:opacity 0.18s;
+}
+.scan-btn:hover{opacity:0.85;}
+
+/* ── RESULT DISPLAY (上欄) ── */
+.result-display{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;transition:border-color 0.3s;
+}
+.result-display.found{border-color:var(--accent);}
+.result-display.not-found-state{border-color:var(--danger);}
+.result-display.ns-state{border-color:var(--accent2);}
+
+.result-idle{
+  padding:28px;text-align:center;color:var(--muted);font-size:14px;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.result-idle-icon{font-size:28px;opacity:0.25;}
+
+/* Found result - big display */
+.result-found{display:flex;align-items:stretch;gap:0;}
+.result-storage-side{
+  background:#111;border-right:1px solid var(--border);
+  padding:22px 24px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;min-width:130px;flex-shrink:0;
+}
+.storage-label-sm{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.storage-big{font-family:'Space Mono',monospace;font-size:38px;font-weight:700;color:var(--accent);letter-spacing:3px;line-height:1;}
+.result-detail{flex:1;padding:18px 22px;display:flex;flex-direction:column;justify-content:center;gap:6px;}
+.result-barcode{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;}
+.result-model-num{font-family:'Space Mono',monospace;font-size:13px;color:var(--muted);}
+.result-name{font-size:17px;font-weight:700;color:var(--text);line-height:1.3;}
+.result-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;}
+.tag{font-size:11px;background:#222;border:1px solid #333;border-radius:4px;padding:2px 8px;color:var(--muted);}
+.result-add-btn{
+  margin:18px 22px 18px 0;flex-shrink:0;
+  background:#1a2a1a;border:1px solid var(--checked-border);color:var(--success);
+  border-radius:7px;padding:10px 16px;font-size:12px;font-weight:700;
+  font-family:'Noto Sans TC',sans-serif;cursor:pointer;transition:all 0.18s;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+}
+.result-add-btn:hover{background:#223322;}
+.result-add-btn.already{background:#222;border-color:#444;color:var(--muted);cursor:default;}
+.result-add-btn svg{width:18px;height:18px;}
+
+/* Not found */
+.result-notfound{padding:22px;text-align:center;}
+.nf-code{font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:var(--danger);margin-bottom:6px;}
+.nf-msg{font-size:13px;color:var(--muted);}
+
+/* No storage */
+.result-nostorage{display:flex;align-items:stretch;}
+.ns-side{
+  background:var(--ns-bg);border-right:1px solid var(--ns-border);
+  padding:22px 20px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;min-width:110px;flex-shrink:0;
+}
+.ns-badge-big{background:var(--danger);color:#fff;font-size:11px;font-weight:700;
+  padding:4px 10px;border-radius:5px;letter-spacing:1px;}
+.ns-detail{flex:1;padding:18px 20px;}
+
+/* flash animation */
+@keyframes flashGold{0%{background:#2a2000;}100%{background:var(--card);}}
+.result-display.flash-in .result-found,
+.result-display.flash-in .result-storage-side{animation:flashGold 0.5s ease;}
+
+/* ── STATS ── */
+.stats-bar{display:flex;gap:8px;flex-wrap:wrap;}
+.stat-pill{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:4px 12px;font-size:11px;color:var(--muted);}
+.stat-pill strong{color:var(--text);}
+.stat-pill.danger strong{color:var(--danger);}
+
+/* ── QUEUE PANEL (下欄) ── */
+.queue-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;flex:1;}
+.queue-header{
+  padding:12px 18px;border-bottom:1px solid var(--border);background:#1a1a1a;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.queue-title{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:700;}
+.q-count-badge{font-size:11px;color:var(--muted);background:#222;padding:2px 9px;border-radius:10px;}
+.queue-hbtns{margin-left:auto;display:flex;gap:6px;}
+.queue-smbtn{
+  background:none;border:1px solid var(--border);color:var(--muted);
+  padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px;
+  font-family:'Noto Sans TC',sans-serif;transition:all 0.15s;
+}
+.queue-smbtn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* Tabs */
+.tabs-row{display:flex;border-bottom:1px solid var(--border);background:#161616;}
+.btab{
+  flex:1;padding:9px;text-align:center;cursor:pointer;font-size:11px;
+  color:var(--muted);border:none;background:none;font-family:'Noto Sans TC',sans-serif;
+  border-bottom:2px solid transparent;transition:all 0.15s;letter-spacing:1px;
+}
+.btab.active{color:var(--text);border-bottom-color:var(--accent);font-weight:700;}
+.btab .bdg{display:inline-block;background:var(--danger);color:#fff;border-radius:8px;font-size:9px;padding:0px 5px;margin-left:4px;vertical-align:middle;}
+.btab-panel{display:none;}
+.btab-panel.active{display:block;max-height:50vh;overflow-y:auto;}
+
+/* Storage group */
+.sg{border-bottom:1px solid #222;}
+.sg:last-child{border-bottom:none;}
+.sg-hdr{
+  padding:9px 18px;background:#1c1c1c;display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid var(--border);position:sticky;top:0;z-index:5;
+}
+.sg-code{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--accent);letter-spacing:2px;}
+.sg-cnt{font-size:11px;color:var(--muted);}
+
+/* Queue card */
+.qcard{
+  background:var(--card);padding:12px 18px;display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.12s;
+}
+.qcard:last-child{border-bottom:none;}
+.qcard:hover{background:#232323;}
+.qcard.checked{background:var(--checked-bg);opacity:0.6;}
+.chkbox{width:20px;height:20px;border:2px solid #444;border-radius:4px;display:flex;align-items:center;justify-content:center;transition:all 0.18s;flex-shrink:0;}
+.qcard.checked .chkbox{background:var(--success);border-color:var(--success);}
+.chk-icon{display:none;color:#111;font-weight:900;font-size:12px;}
+.qcard.checked .chk-icon{display:block;}
+.q-info{flex:1;min-width:0;}
+.q-model{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:2px;}
+.q-name{font-size:13px;font-weight:500;color:var(--text);word-break:break-all;margin-bottom:3px;}
+.q-tags{display:flex;gap:4px;flex-wrap:wrap;}
+
+/* Empty */
+.empty-msg{padding:32px;text-align:center;color:var(--muted);font-size:13px;}
+
+/* Upload modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:200;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:26px;width:90%;max-width:440px;}
+.modal-title{font-size:15px;font-weight:700;margin-bottom:4px;}
+.modal-sub{font-size:12px;color:var(--muted);margin-bottom:16px;}
+.drop-zone{border:2px dashed #3a3a3a;border-radius:10px;padding:30px 16px;text-align:center;color:var(--muted);cursor:pointer;transition:all 0.2s;margin-bottom:12px;}
+.drop-zone.dragover{border-color:var(--accent);color:var(--accent);}
+.drop-icon{font-size:30px;margin-bottom:8px;}
+.drop-text{font-size:13px;}
+.drop-sub{font-size:10px;margin-top:4px;opacity:0.5;}
+.file-input-hidden{display:none;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px;}
+.m-cancel{background:none;border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'Noto Sans TC',sans-serif;}
+.m-ok{background:var(--accent);color:#111;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:700;font-size:12px;font-family:'Noto Sans TC',sans-serif;}
+.m-ok:disabled{opacity:0.35;cursor:not-allowed;}
+.up-status{font-size:12px;color:var(--success);margin-top:8px;text-align:center;}
+.up-error{font-size:12px;color:var(--accent2);margin-top:8px;text-align:center;}
+
+#dlCanvas{display:none;}
+
+@media(max-width:560px){
+  .storage-big{font-size:28px;}
+  .result-name{font-size:14px;}
+  .result-add-btn span{display:none;}
+  .logo{font-size:14px;}
+  .scan-input{font-size:20px;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">BILLY<span>.</span>WMS</div>
+  <div class="hdr-right">
+    <button class="hbtn dl" onclick="openDownload()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      下載明細
+    </button>
+    <button class="hbtn" onclick="openCloudSetting()" id="cloudBtn" style="border-color:#2a4a2a;color:#60a060;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+      <span id="cloudBtnLabel">設定雲端</span>
+    </button>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- 載入中畫面 -->
+  <div id="loadingOverlay" style="position:fixed;inset:0;background:#0d0d0d;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+    <div style="font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:#f0c040;letter-spacing:3px;">BILLY<span style="color:#e07030">.</span>WMS</div>
+    <div style="color:#777;font-size:13px;letter-spacing:2px;">☁️ 載入商品資料中…</div>
+    <div style="width:180px;height:3px;background:#222;border-radius:2px;overflow:hidden;">
+      <div id="loadBar" style="height:100%;width:0%;background:#f0c040;border-radius:2px;transition:width 0.4s;animation:loadAnim 1.5s ease-in-out infinite;"></div>
+    </div>
+    <div id="loadMsg" style="font-size:11px;color:#555;margin-top:4px;">連線 Google 試算表…</div>
+  </div>
+  <style>@keyframes loadAnim{0%{width:0%}50%{width:80%}100%{width:0%}}</style>
+
+  <!-- 掃描輸入 -->
+  <div class="scan-zone">
+    <div class="scan-label">掃描條碼 / 輸入條碼</div>
+    <div class="scan-row">
+      <input class="scan-input" id="barcodeInput" type="text"
+        placeholder="掃描或輸入條碼..."
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <button class="scan-btn" onclick="doSearch()">查詢</button>
+      <button class="scan-btn" id="camBtn" onclick="openCamera()" style="background:#1a1a1a;border:2px solid var(--border);color:var(--accent);font-size:20px;padding:12px 16px;">📷</button>
+    </div>
+  </div>
+
+  <!-- 相機掃描 overlay -->
+  <div id="cameraOverlay" style="display:none;position:fixed;inset:0;background:#000;z-index:300;flex-direction:column;align-items:center;justify-content:center;">
+    <div style="position:relative;width:100%;max-width:500px;max-height:70vh;overflow:hidden;border-radius:8px;">
+      <video id="camVideoEl" style="width:100%;border-radius:8px;" playsinline autoplay muted></video>
+      <!-- 掃描框 -->
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+        <div style="width:70%;height:120px;border:3px solid var(--accent);border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,0.45);"></div>
+      </div>
+    </div>
+    <div id="camStatus" style="color:#fff;margin-top:16px;font-size:14px;letter-spacing:1px;text-align:center;padding:0 20px;">對準條碼…</div>
+    <button onclick="closeCamera()" style="margin-top:20px;background:#333;color:#fff;border:none;border-radius:8px;padding:12px 32px;font-size:15px;cursor:pointer;font-family:'Noto Sans TC',sans-serif;">關閉相機</button>
+  </div>
+
+  <!-- 上欄：當下掃描結果 -->
+  <div class="result-display" id="resultDisplay">
+    <div class="result-idle">
+      <span class="result-idle-icon">📦</span>
+      <span>掃描條碼後顯示儲位</span>
+    </div>
+  </div>
+
+  
+
+  <!-- 統計列 -->
+  <div class="stats-bar">
+    <div class="stat-pill">商品資料 <strong id="totalCount">0</strong> 筆</div>
+    <div class="stat-pill">待歸位 <strong id="queueCount">0</strong> 筆</div>
+    <div class="stat-pill">已勾選 <strong id="checkedCount">0</strong> 筆</div>
+    <div class="stat-pill" id="lastUpdateStat">最後更新 <strong>原始檔案</strong></div>
+  </div>
+
+  <!-- 下欄：待歸位清單 -->
+  <div class="queue-panel">
+    <div class="queue-header">
+      <div class="queue-title">待歸位清單</div>
+      <span class="q-count-badge" id="qCountBadge">0</span>
+      <div class="queue-hbtns">
+        <button class="queue-smbtn" onclick="clearChecks()">清除勾選</button>
+        <button class="queue-smbtn" onclick="clearQueue()">清除清單</button>
+      </div>
+    </div>
+    <div class="btab-panel active" id="bpanel-queue">
+      <div class="empty-msg">掃描商品後自動加入並依儲位排序</div>
+    </div>
+  </div>
+
+</div>
+
+
+
+<!-- Cloud Settings Modal -->
+<div class="modal-overlay" id="cloudModal">
+  <div class="modal">
+    <div class="modal-title">☁️ 設定 Google 試算表</div>
+    <div class="modal-sub">填入 Google 試算表 ID，之後每次開啟網頁自動讀取最新資料</div>
+    <div style="margin-bottom:10px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:1px;">試算表 ID</div>
+      <input id="sheetIdInput" type="text" placeholder="貼上 Google 試算表 ID..."
+        style="width:100%;background:#0a0a0a;border:2px solid var(--border);border-radius:7px;padding:10px 14px;font-size:13px;color:var(--text);outline:none;font-family:'Space Mono',monospace;"
+        oninput="this.style.borderColor=this.value?'var(--accent)':'var(--border)'">
+      <div style="font-size:10px;color:var(--muted);margin-top:5px;">網址中 /d/ 和 /edit 之間那段文字</div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:1px;">工作表名稱（預設：商品資料）</div>
+      <input id="sheetNameInput" type="text" placeholder="商品資料"
+        style="width:100%;background:#0a0a0a;border:2px solid var(--border);border-radius:7px;padding:10px 14px;font-size:13px;color:var(--text);outline:none;font-family:'Noto Sans TC',sans-serif;">
+    </div>
+    <div id="cloudStatus" style="font-size:12px;min-height:20px;margin-bottom:8px;"></div>
+    <div class="modal-actions">
+      <button class="m-cancel" onclick="closeCloudSetting()">取消</button>
+      <button class="m-ok" onclick="testAndSaveCloud()">連線測試 &amp; 儲存</button>
+    </div>
+  </div>
+</div>
+
+<canvas id="dlCanvas"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ═══════════════════════════════════
+//  DATA
+// ═══════════════════════════════════
+let DB = [];
+
+let checkedSet  = new Set(JSON.parse(localStorage.getItem('billyChecked') || '[]'));
+let queue       = {}; // barcode -> record  (with storage)
+let pendingData = null;
+
+// ── Index ─────────────────────────
+function buildIndex(arr) {
+  const idx = {};
+  arr.forEach(r => {
+    [(r['品項條碼']||'').toUpperCase(), (r['商品編號']||'').toUpperCase()].forEach(k => {
+      if (!k || k === 'NAN') return;
+      if (!idx[k]) idx[k] = [];
+      idx[k].push(r);
+    });
+  });
+  return idx;
+}
+let INDEX = buildIndex(DB);
+
+// ── Helpers ───────────────────────
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escId(s)   { return String(s).replace(/[^a-zA-Z0-9\-_]/g,'_'); }
+function escJs(s)   { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function clean(s)   { return (!s || s==='nan' || s==='NaN') ? '' : String(s).trim(); }
+
+function parseStorage(s) {
+  if (!s) return { letters:'zzz', num:9999 };
+  const m = String(s).match(/^([A-Za-z]+)(\d*)$/);
+  if (!m) return { letters: String(s).toLowerCase(), num: 0 };
+  return { letters: m[1].toLowerCase(), num: m[2] ? parseInt(m[2],10) : 0 };
+}
+function storageCmp(a, b) {
+  const pa = parseStorage(a), pb = parseStorage(b);
+  if (pa.letters < pb.letters) return -1;
+  if (pa.letters > pb.letters) return 1;
+  return pa.num - pb.num;
+}
+
+function updateStats() {
+  document.getElementById('totalCount').textContent   = DB.length.toLocaleString();
+  document.getElementById('queueCount').textContent   = Object.keys(queue).length;
+  document.getElementById('qCountBadge').textContent  = Object.keys(queue).length;
+  document.getElementById('checkedCount').textContent = checkedSet.size.toLocaleString();
+}
+updateStats();
+renderQueue();
+
+
+//  SEARCH / SCAN
+// ═══════════════════════════════════
+const bInput = document.getElementById('barcodeInput');
+let searchTimer;
+
+// 掃描槍輸入很快（完整條碼後送 Enter）
+// input 事件作為備用（手動輸入用），主要靠 Enter 觸發
+bInput.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { if (bInput.value.trim().length >= 3) doSearch(); }, 600);
+});
+bInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+// ── 掃描槍焦點保護 ────────────────
+// 掃描槍掃完會送 Enter，確保輸入框永遠有焦點
+bInput.focus();
+
+// 點擊頁面任何地方（非 button/modal）都拉回焦點
+document.addEventListener('click', e => {
+  const tag = e.target.tagName;
+  const inModal = e.target.closest('.modal-overlay');
+  if (!inModal && tag !== 'BUTTON') {
+    bInput.focus();
+  }
+});
+
+// 頁面重新獲得焦點時（從其他視窗切回來）
+window.addEventListener('focus', () => bInput.focus());
+
+// 安全網：每 2 秒自動拉回焦點（如果 modal 沒開著）
+window._autoFocusTimer = setInterval(() => bInput.focus(), 2000);
+
+function doSearch() {
+  const raw = bInput.value.trim();
+  if (!raw) return;
+  const key = raw.toUpperCase();
+
+  // Exact match first
+  let results = INDEX[key] ? [...INDEX[key]] : [];
+
+  // Partial match fallback
+  if (results.length === 0) {
+    const partial = Object.keys(INDEX).filter(k => k.includes(key));
+    partial.forEach(k => results = results.concat(INDEX[k]));
+    results = [...new Map(results.map(r => [r['品項條碼'], r])).values()];
+  }
+
+  bInput.value = '';
+
+  if (results.length === 0) {
+    showNotFound(raw);
+    return;
+  }
+
+  // Take the FIRST result only (one scan = one item)
+  const r = results[0];
+  const hasStorage = !!clean(r['倉庫儲位']);
+
+  if (hasStorage) {
+    // Add to queue
+    queue[r['品項條碼']] = r;
+    showFound(r);
+    renderQueue();
+  } else {
+    // No storage — just show the barcode in the result display
+    showNoStorage(r);
+  }
+
+  updateStats();
+}
+
+// ═══════════════════════════════════
+//  RESULT DISPLAY (上欄)
+// ═══════════════════════════════════
+function showFound(r) {
+  const display = document.getElementById('resultDisplay');
+  const bc    = r['品項條碼'];
+  const st    = clean(r['倉庫儲位']);
+  const inQ   = !!queue[bc];
+
+  display.className = 'result-display found';
+  display.innerHTML = `
+    <div class="result-found">
+      <div class="result-storage-side">
+        <div class="storage-label-sm">儲位</div>
+        <div class="storage-big">${escHtml(st)}</div>
+      </div>
+      <div class="result-detail">
+        <div class="result-barcode">${escHtml(bc)}</div>
+        <div class="result-model-num">${escHtml(r['商品編號'])}</div>
+        <div class="result-name">${escHtml(r['商品名稱'])}</div>
+        <div class="result-tags">
+          ${clean(r['樣式']) ? `<span class="tag">${escHtml(r['樣式'])}</span>` : ''}
+          ${clean(r['尺寸'])  ? `<span class="tag">${escHtml(r['尺寸'])}</span>`  : ''}
+        </div>
+      </div>
+    </div>`;
+
+  // flash
+  void display.offsetWidth;
+  display.classList.add('flash-in');
+  setTimeout(() => display.classList.remove('flash-in'), 600);
+}
+
+function showNoStorage(r) {
+  const display = document.getElementById('resultDisplay');
+  display.className = 'result-display ns-state';
+  display.innerHTML = `
+    <div class="result-nostorage">
+      <div class="ns-side">
+        <div class="ns-badge-big">無儲位</div>
+      </div>
+      <div class="ns-detail">
+        <div class="result-barcode">${escHtml(r['品項條碼'])}</div>
+        <div class="result-model-num" style="font-size:22px;font-weight:700;color:var(--accent2);margin-top:6px">${escHtml(r['商品編號'])}</div>
+      </div>
+    </div>`;
+}
+
+function showNotFound(raw) {
+  const display = document.getElementById('resultDisplay');
+  display.className = 'result-display not-found-state';
+  display.innerHTML = `
+    <div class="result-notfound">
+      <div class="nf-code">${escHtml(raw)}</div>
+      <div class="nf-msg">找不到此條碼對應的商品</div>
+    </div>`;
+}
+
+// ═══════════════════════════════════
+//  QUEUE PANEL (下欄)
+// ═══════════════════════════════════
+function renderQueue() {
+  const el = document.getElementById('bpanel-queue');
+  const items = Object.values(queue);
+  if (items.length === 0) {
+    el.innerHTML = '<div class="empty-msg">掃描商品後自動加入並依儲位排序</div>';
+    return;
+  }
+
+  // Sort by storage
+  items.sort((a,b) => storageCmp(clean(a['倉庫儲位']), clean(b['倉庫儲位'])));
+
+  // Group
+  const groups = {}, order = [];
+  items.forEach(r => {
+    const st = clean(r['倉庫儲位']) || '—';
+    if (!groups[st]) { groups[st] = []; order.push(st); }
+    groups[st].push(r);
+  });
+
+  let html = '';
+  order.forEach(st => {
+    const grp = groups[st];
+    html += `<div class="sg">
+      <div class="sg-hdr">
+        <div class="sg-code">${escHtml(st)}</div>
+        <div class="sg-cnt">${grp.length} 件</div>
+      </div>`;
+    grp.forEach(r => {
+      const id = r['品項條碼'];
+      const sid = escId(id);
+      const chk = checkedSet.has(id);
+      html += `<div class="qcard${chk?' checked':''}" id="qc-${sid}" onclick="toggleCheck('${sid}','${escJs(id)}')">
+        <div class="chkbox"><span class="chk-icon">✓</span></div>
+        <div class="q-info">
+          <div class="q-model">${escHtml(r['商品編號'])} · ${escHtml(id)}</div>
+          <div class="q-name">${escHtml(r['商品名稱'])}</div>
+          <div class="q-tags">
+            ${clean(r['樣式']) ? `<span class="tag">${escHtml(r['樣式'])}</span>` : ''}
+            ${clean(r['尺寸'])  ? `<span class="tag">${escHtml(r['尺寸'])}</span>`  : ''}
+          </div>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
+// ── Checkbox ──────────────────────
+function toggleCheck(safeId, realId) {
+  checkedSet.has(realId) ? checkedSet.delete(realId) : checkedSet.add(realId);
+  localStorage.setItem('billyChecked', JSON.stringify([...checkedSet]));
+  const card = document.getElementById('qc-'+safeId);
+  if (card) card.classList.toggle('checked', checkedSet.has(realId));
+  updateStats();
+}
+
+function clearChecks() {
+  if (!confirm('確定要清除所有勾選記錄嗎？')) return;
+  checkedSet.clear();
+  localStorage.setItem('billyChecked', '[]');
+  document.querySelectorAll('.qcard.checked').forEach(c => c.classList.remove('checked'));
+  updateStats();
+}
+
+function clearQueue() {
+  if (!confirm('確定要清除待歸位清單嗎？（勾選記錄保留）')) return;
+  queue = {};
+  updateStats();
+  renderQueue();
+  document.getElementById('resultDisplay').className = 'result-display';
+  document.getElementById('resultDisplay').innerHTML = '<div class="result-idle"><span class="result-idle-icon">📦</span><span>掃描條碼後顯示儲位</span></div>';
+}
+
+// ═══════════════════════════════════
+//  DOWNLOAD IMAGE
+// ═══════════════════════════════════
+function openDownload() {
+  const items = Object.values(queue);
+  if (items.length === 0) { alert('待歸位清單是空的，請先掃描商品。'); return; }
+  generateImage(items);
+}
+
+function generateImage(items) {
+  // Sort & group
+  const sorted = [...items].sort((a,b) => storageCmp(clean(a['倉庫儲位']), clean(b['倉庫儲位'])));
+  const groups = {}, order = [];
+  sorted.forEach(r => {
+    const st = clean(r['倉庫儲位']) || '無儲位';
+    if (!groups[st]) { groups[st]=[]; order.push(st); }
+    groups[st].push(r);
+  });
+
+  // Build rows: merge same 商品編號+樣式+尺寸 → count qty
+  const allRows = [];
+  order.forEach(st => {
+    const counted = {};
+    groups[st].forEach(r => {
+      const k = `${r['商品編號']}|${r['樣式']}|${r['尺寸']}`;
+      if (!counted[k]) counted[k] = { model:r['商品編號'], color:r['樣式'], size:r['尺寸'], storage:st, qty:0 };
+      counted[k].qty++;
+    });
+    Object.values(counted).forEach(row => allRows.push(row));
+  });
+
+  // Canvas setup
+  const canvas = document.getElementById('dlCanvas');
+  const W = 860, PAD = 28;
+  const ROW_H = 40, HDR_H = 44, TITLE_H = 60;
+  // col: 型號, 顏色, 尺寸, 件數, 儲位
+  const colX = [PAD+4, 230, 400, 500, 610];
+  const colW = [218,   160, 90,  100, 160];
+  const heads = ['商品型號','顏色','尺寸','件數','儲位'];
+
+  const numRows = allRows.length + order.length; // data rows + group gaps
+  const H = TITLE_H + HDR_H + numRows * ROW_H + PAD * 2;
+
+  canvas.width  = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // BG
+  ctx.fillStyle = '#0d0d0d';
+  ctx.fillRect(0, 0, W, H);
+
+  // Title bar
+  ctx.fillStyle = '#161616';
+  ctx.fillRect(0, 0, W, TITLE_H);
+  ctx.strokeStyle = '#f0c040';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(0, TITLE_H); ctx.lineTo(W, TITLE_H); ctx.stroke();
+
+  ctx.fillStyle = '#f0c040';
+  ctx.font = 'bold 20px "Space Mono", monospace';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('BILLY.WMS', PAD, TITLE_H/2 - 8);
+
+  ctx.fillStyle = '#888';
+  ctx.font = '12px sans-serif';
+  ctx.fillText(new Date().toLocaleDateString('zh-TW') + '  歸位明細', PAD, TITLE_H/2 + 12);
+
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#666';
+  ctx.font = '12px sans-serif';
+  ctx.fillText(`共 ${allRows.length} 筆・${order.length} 個儲位`, W - PAD, TITLE_H/2 + 12);
+  ctx.textAlign = 'left';
+
+  // Table header
+  let y = TITLE_H;
+  ctx.fillStyle = '#1c1c1c';
+  ctx.fillRect(0, y, W, HDR_H);
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, y+HDR_H); ctx.lineTo(W, y+HDR_H); ctx.stroke();
+
+  ctx.fillStyle = '#666';
+  ctx.font = 'bold 11px sans-serif';
+  heads.forEach((h,i) => {
+    if (i === 4) ctx.textAlign = 'center';
+    ctx.fillText(h, colX[i] + (i===4 ? colW[i]/2 : 0), y + HDR_H/2);
+    ctx.textAlign = 'left';
+  });
+  y += HDR_H;
+
+  // Data rows
+  let rowIdx = 0;
+  let prevSt = null;
+  allRows.forEach(row => {
+    // Group separator line
+    if (row.storage !== prevSt && prevSt !== null) {
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(PAD, y+1); ctx.lineTo(W-PAD, y+1); ctx.stroke();
+      y += 8;
+    }
+    prevSt = row.storage;
+
+    const bg = rowIdx % 2 === 0 ? '#181818' : '#161616';
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, y, W, ROW_H);
+
+    // Accent left bar
+    ctx.fillStyle = '#f0c040';
+    ctx.fillRect(0, y, 3, ROW_H);
+
+    // 型號
+    ctx.fillStyle = '#e0ddd8';
+    ctx.font = '13px "Space Mono", monospace';
+    let txt = clipText(ctx, String(row.model), colW[0] - 8);
+    ctx.fillText(txt, colX[0], y + ROW_H/2);
+
+    // 顏色
+    ctx.fillStyle = '#c0bdb8';
+    ctx.font = '13px sans-serif';
+    txt = clipText(ctx, clean(row.color)||'—', colW[1]-8);
+    ctx.fillText(txt, colX[1], y + ROW_H/2);
+
+    // 尺寸
+    txt = clipText(ctx, clean(row.size)||'—', colW[2]-8);
+    ctx.fillText(txt, colX[2], y + ROW_H/2);
+
+    // 件數
+    ctx.fillStyle = '#f0ede8';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(row.qty + ' 件', colX[3] + colW[3]/2, y + ROW_H/2);
+    ctx.textAlign = 'left';
+
+    // 儲位 (big, accent)
+    ctx.fillStyle = '#f0c040';
+    ctx.font = 'bold 17px "Space Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(row.storage, colX[4] + colW[4]/2, y + ROW_H/2);
+    ctx.textAlign = 'left';
+
+    // Row bottom border
+    ctx.strokeStyle = '#252525';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, y+ROW_H); ctx.lineTo(W, y+ROW_H); ctx.stroke();
+
+    y += ROW_H;
+    rowIdx++;
+  });
+
+  // Footer
+  ctx.fillStyle = '#333';
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('比利服飾 倉庫管理系統', W/2, y + 18);
+  ctx.textAlign = 'left';
+
+  const today = new Date().toLocaleDateString('zh-TW').replace(/\//g,'-');
+  const link = document.createElement('a');
+  link.download = `比利服飾_歸位明細_${today}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function clipText(ctx, txt, maxW) {
+  while (ctx.measureText(txt).width > maxW && txt.length > 2) txt = txt.slice(0,-1) + '…';
+  return txt;
+}
+
+// ═══════════════════════════════════
+// ═══════════════════════════════════
+════════════════════════════
+//  CAMERA — 使用 BarcodeDetector API (iOS 16+ / Android)
+//  如不支援則 fallback 到手動輸入
+// ═══════════════════════════════════
+let camStream = null;
+let camDetecting = false;
+
+async function openCamera() {
+  const overlay = document.getElementById('cameraOverlay');
+  overlay.style.display = 'flex';
+  document.getElementById('camStatus').textContent = '啟動相機中…';
+  clearInterval(window._autoFocusTimer);
+
+  // Check BarcodeDetector support
+  if (!('BarcodeDetector' in window)) {
+    document.getElementById('camStatus').innerHTML =
+      '此裝置不支援自動掃描<br><span style="font-size:11px;color:#555">請升級 iOS 至 16 以上版本</span>';
+    return;
+  }
+
+  try {
+    // Get back camera stream
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+
+    const video = document.getElementById('camVideoEl');
+    video.srcObject = camStream;
+    await video.play();
+
+    const detector = new BarcodeDetector({
+      formats: ['code_128','code_39','code_93','codabar','ean_13','ean_8','upc_a','upc_e','itf','data_matrix','qr_code']
+    });
+
+    camDetecting = true;
+    document.getElementById('camStatus').textContent = '對準條碼中間框框…';
+
+    let lastCode = '', lastTime = 0;
+
+    async function detect() {
+      if (!camDetecting) return;
+      try {
+        const barcodes = await detector.detect(video);
+        if (barcodes.length > 0) {
+          const code = barcodes[0].rawValue;
+          const now = Date.now();
+          if (code !== lastCode || now - lastTime > 2000) {
+            lastCode = code;
+            lastTime = now;
+            document.getElementById('camStatus').innerHTML =
+              `<span style="color:var(--accent)">✅ 掃到：${escHtml(code)}</span>`;
+            if (navigator.vibrate) navigator.vibrate(80);
+            setTimeout(() => {
+              closeCamera();
+              bInput.value = code;
+              doSearch();
+            }, 350);
+            return;
+          }
+        }
+      } catch(e) {}
+      if (camDetecting) requestAnimationFrame(detect);
+    }
+    requestAnimationFrame(detect);
+
+  } catch(err) {
+    document.getElementById('camStatus').textContent = '❌ 相機啟動失敗：' + err.message;
+  }
+}
+
+function closeCamera() {
+  camDetecting = false;
+  if (camStream) {
+    camStream.getTracks().forEach(t => t.stop());
+    camStream = null;
+  }
+  const video = document.getElementById('camVideoEl');
+  if (video) { video.srcObject = null; }
+  document.getElementById('cameraOverlay').style.display = 'none';
+  window._autoFocusTimer = setInterval(() => bInput.focus(), 2000);
+  bInput.focus();
+}
+
+// ═══════════════════════════════════
+//  CLOUD (Google Sheets)
+// ═══════════════════════════════════
+const SHEET_ID_KEY      = 'billySheetId';
+const SHEET_NAME_KEY    = 'billySheetName';
+const DEFAULT_SHEET_ID  = '1JmmlPnRV-o-HN2gu5L_tcEcvWwDINASmdt47ObaQ1JQ';
+const DEFAULT_SHEET_NAME= '商品資料';
+
+function openCloudSetting() {
+  document.getElementById('cloudModal').classList.add('open');
+  document.getElementById('sheetIdInput').value   = localStorage.getItem(SHEET_ID_KEY)   || DEFAULT_SHEET_ID;
+  document.getElementById('sheetNameInput').value = localStorage.getItem(SHEET_NAME_KEY) || DEFAULT_SHEET_NAME;
+  document.getElementById('cloudStatus').textContent = '';
+}
+function closeCloudSetting() {
+  document.getElementById('cloudModal').classList.remove('open');
+}
+
+async function testAndSaveCloud() {
+  const id   = document.getElementById('sheetIdInput').value.trim();
+  const name = document.getElementById('sheetNameInput').value.trim() || '商品資料';
+  const statusEl = document.getElementById('cloudStatus');
+
+  if (!id) { statusEl.innerHTML = '<span style="color:var(--danger)">請填入試算表 ID</span>'; return; }
+
+  statusEl.innerHTML = '<span style="color:var(--muted)">連線測試中…</span>';
+
+  try {
+    const data = await fetchGoogleSheet(id, name);
+    if (!data || data.length === 0) {
+      statusEl.innerHTML = '<span style="color:var(--danger)">❌ 讀取失敗：找不到資料，請確認試算表已設為公開且工作表名稱正確</span>';
+      return;
+    }
+    // Save
+    localStorage.setItem(SHEET_ID_KEY, id);
+    localStorage.setItem(SHEET_NAME_KEY, name);
+    // Apply data
+    DB = data;
+    INDEX = buildIndex(DB);
+    updateStats();
+    updateCloudBtn(true);
+    statusEl.innerHTML = `<span style="color:var(--success)">✅ 連線成功！讀取到 ${data.length.toLocaleString()} 筆資料</span>`;
+    setTimeout(() => closeCloudSetting(), 1200);
+  } catch(e) {
+    statusEl.innerHTML = `<span style="color:var(--danger)">❌ 錯誤：${e.message}。請確認試算表已設為「知道連結者可檢視」</span>`;
+  }
+}
+
+const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxUD4SLXW03voq9AhWqxp9jLDbJ1gh29id0Gyjlc3P4aaWmVQyx8SU8nheABbKyJAkB/exec';
+
+async function fetchGoogleSheet(id, sheetName) {
+  const url = DEFAULT_APPS_SCRIPT_URL;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const rows = await res.json();
+  if (!Array.isArray(rows) || rows.length === 0) throw new Error('試算表無資料');
+  return rows.map(r => ({
+    '商品編號': String(r['商品編號'] || '').trim(),
+    '商品名稱': String(r['商品名稱'] || '').trim(),
+    '樣式':     String(r['樣式']     || '').trim(),
+    '尺寸':     String(r['尺寸']     || '').trim(),
+    '品項條碼': String(r['品項條碼'] || '').trim(),
+    '倉庫儲位': String(r['倉庫儲位'] || '').trim(),
+  })).filter(r => r['品項條碼'] && r['品項條碼'] !== 'nan');
+}
+
+function updateCloudBtn(connected) {
+  const btn   = document.getElementById('cloudBtn');
+  const label = document.getElementById('cloudBtnLabel');
+  if (connected) {
+    btn.style.borderColor = 'var(--success)';
+    btn.style.color       = 'var(--success)';
+    label.textContent     = '雲端已連線';
+  } else {
+    btn.style.borderColor = '#2a4a2a';
+    btn.style.color       = '#60a060';
+    label.textContent     = '設定雲端';
+  }
+}
+
+// Auto-load from Google Sheets on startup
+(async () => {
+  const savedId   = localStorage.getItem(SHEET_ID_KEY)   || DEFAULT_SHEET_ID;
+  const savedName = localStorage.getItem(SHEET_NAME_KEY) || DEFAULT_SHEET_NAME;
+  updateCloudBtn(false);
+  document.getElementById('cloudBtnLabel').textContent = '雲端載入中…';
+  try {
+    const data = await fetchGoogleSheet(savedId, savedName);
+    if (data && data.length > 0) {
+      DB    = data;
+      INDEX = buildIndex(DB);
+      updateStats();
+      updateCloudBtn(true);
+      document.getElementById('lastUpdateStat').innerHTML =
+        `最後更新 <strong>Google 試算表 ${new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}</strong>`;
+    } else {
+      document.getElementById('loadMsg').textContent = '⚠️ 讀取到空資料，請確認試算表格式';
+      document.getElementById('cloudBtnLabel').textContent = '雲端設定';
+    }
+  } catch(e) {
+    document.getElementById('loadMsg').textContent = '❌ 載入失敗：' + e.message;
+    document.getElementById('cloudBtnLabel').textContent = '雲端設定';
+    // Show error for 3 seconds then hide
+    await new Promise(r => setTimeout(r, 3000));
+  }
+  // Always hide loading overlay
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) overlay.style.display = 'none';
+  bInput.focus();
+})();
+
+// ═══════════════════════════════════
+
+
+
+
+</script>
+</body>
+</html>
